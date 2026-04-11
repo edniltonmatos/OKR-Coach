@@ -18,14 +18,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [keyResults, setKeyResults] = useState<KeyResult[]>([]);
 
   const refresh = useCallback(async () => {
-    await runMigrations();
-    const c = await getLatestCycle();
-    setCycle(c);
-    if (c) {
-      const krs = await getKeyResults(c.id);
-      setKeyResults(krs);
-    } else {
-      setKeyResults([]);
+    try {
+      await runMigrations();
+      const c = await getLatestCycle();
+      setCycle(c);
+      if (c) {
+        const krs = await getKeyResults(c.id);
+        setKeyResults(krs);
+      } else {
+        setKeyResults([]);
+      }
+    } catch (e) {
+      console.error('[DataContext] refresh failed', e);
     }
   }, []);
 
@@ -41,6 +45,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           const krs = await getKeyResults(c.id);
           setKeyResults(krs);
         }
+      } catch (e) {
+        console.error('[DataContext] init failed', e);
       } finally {
         if (alive) setLoading(false);
       }
