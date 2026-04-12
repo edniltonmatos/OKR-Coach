@@ -10,7 +10,7 @@ type Props = {
   onPressProfile?: () => void;
 };
 
-const avatarSource = require('../../assets/profile-avatar.png');
+const avatarSource = require('../../assets/profile-avatar.jpg');
 
 function HeaderAvatar() {
   return <Image source={avatarSource} style={styles.avatarImg} resizeMode="cover" />;
