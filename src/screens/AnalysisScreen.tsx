@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -11,20 +12,26 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import * as SecureStore from 'expo-secure-store';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppHeader } from '../components/AppHeader';
+import { AssistantMarkdown } from '../components/AssistantMarkdown';
 import { useAppData } from '../context/DataContext';
 import { getChatMessages, insertChatMessage } from '../db/repositories';
-import { SECURE_OPENAI_BASE, SECURE_OPENAI_KEY } from '../config/secrets';
 import { sendChatCompletion } from '../lib/ai';
+import { getOpenAiCredentials } from '../lib/openAiCredentials';
+import { getUserFacingApiErrorMessage } from '../lib/apiErrors';
 import { createId } from '../lib/id';
 import { getCurrentWeekNumber, isReviewDay } from '../lib/dates';
 import type { ChatMessage } from '../types';
 import { colors } from '../theme';
 
+/** Altura aproximada do AppHeader abaixo da status bar (padding 16+16 + linha ~40). */
+const HEADER_CONTENT_HEIGHT = 56;
+
 export function AnalysisScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { cycle, keyResults, refresh } = useAppData();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -60,9 +67,12 @@ export function AnalysisScreen() {
 
   const send = async () => {
     if (!cycle || !input.trim()) return;
-    const apiKey = await SecureStore.getItemAsync(SECURE_OPENAI_KEY);
+    const { apiKey, baseUrl, model: modelName } = await getOpenAiCredentials();
     if (!apiKey) {
-      (navigation as { navigate: (n: string) => void }).navigate('Settings');
+      Alert.alert(
+        'Chave da API',
+        'Defina EXPO_PUBLIC_OPENAI_API_KEY no ficheiro .env (e opcionalmente EXPO_PUBLIC_OPENAI_BASE_URL e EXPO_PUBLIC_OPENAI_MODEL). Reinicie o Metro e gere de novo o build do app para a chave entrar no pacote.'
+      );
       return;
     }
     const userMsg: ChatMessage = {
@@ -77,14 +87,14 @@ export function AnalysisScreen() {
     setInput('');
     setLoading(true);
     try {
-      const base = await SecureStore.getItemAsync(SECURE_OPENAI_BASE);
       const history = [...messages, userMsg].map((x) => ({
         role: x.role as 'user' | 'assistant',
         content: x.content,
       }));
       const reply = await sendChatCompletion({
         apiKey,
-        baseUrl: base ?? undefined,
+        baseUrl,
+        model: modelName,
         cycle,
         keyResults: sortedKr,
         messages: history,
@@ -104,7 +114,7 @@ export function AnalysisScreen() {
         id: createId('msg'),
         cycleId: cycle.id,
         role: 'assistant',
-        content: `Erro: ${e instanceof Error ? e.message : 'falha na rede'}`,
+        content: getUserFacingApiErrorMessage(e),
         createdAt: new Date().toISOString(),
       };
       await insertChatMessage(err);
@@ -133,17 +143,17 @@ export function AnalysisScreen() {
   }
 
   const showReviewBanner = isReviewDay(cycle);
+  const keyboardOffset = insets.top + HEADER_CONTENT_HEIGHT;
 
   return (
     <KeyboardAvoidingView
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={80}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? keyboardOffset : 0}
     >
       <AppHeader
         title="ANÁLISE"
         onPressMenu={() => (navigation as { navigate: (n: string) => void }).navigate('CycleSetup')}
-        onPressProfile={() => (navigation as { navigate: (n: string) => void }).navigate('Settings')}
       />
       <View style={styles.ctx}>
         <View style={styles.eyebrowRow}>
@@ -175,6 +185,8 @@ export function AnalysisScreen() {
           style={styles.list}
           data={messages}
           keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
             <View
@@ -185,7 +197,11 @@ export function AnalysisScreen() {
             >
               <View style={item.role === 'assistant' ? styles.aiBar : undefined} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.bubbleText}>{item.content}</Text>
+                {item.role === 'assistant' ? (
+                  <AssistantMarkdown content={item.content} />
+                ) : (
+                  <Text style={styles.bubbleText}>{item.content}</Text>
+                )}
                 <Text style={styles.meta}>
                   {item.role === 'assistant' ? 'STRATEGY AI' : 'VOCÊ'} ·{' '}
                   {new Date(item.createdAt).toLocaleTimeString('pt-BR', {
@@ -203,7 +219,7 @@ export function AnalysisScreen() {
           }
         />
       )}
-      <View style={styles.inputRow}>
+      <View style={[styles.inputRow, { paddingBottom: 16 + insets.bottom }]}>
         <TextInput
           style={styles.input}
           placeholder="Digite sua resposta técnica"

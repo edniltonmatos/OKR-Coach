@@ -93,7 +93,6 @@ export function CycleSetupScreen() {
       <AppHeader
         title="CONFIGURAÇÃO"
         onPressMenu={() => navigation.goBack()}
-        onPressProfile={() => (navigation as { navigate: (n: string) => void }).navigate('Settings')}
       />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.eyebrowRow}>
@@ -223,7 +222,6 @@ export function CycleSetupScreen() {
           loading={saving}
           disabled={!objective.trim()}
         />
-        <Text style={styles.footerHint}>OPERATIONAL READINESS: OPTIMAL</Text>
         <View style={{ height: 48 }} />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -232,7 +230,7 @@ export function CycleSetupScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
-  scroll: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 48 },
+  scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 48 },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   eyebrowLine: { width: 24, height: 2, backgroundColor: colors.accent },
   eyebrow: {
@@ -320,14 +318,6 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
   },
   weekCellTextActive: { color: colors.onAccent },
-  footerHint: {
-    marginTop: 20,
-    textAlign: 'center',
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontSize: 10,
-    letterSpacing: 2,
-    color: '#666',
-  },
   iosDateOk: {
     alignSelf: 'center',
     marginTop: 8,

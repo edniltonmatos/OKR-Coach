@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../theme';
 
@@ -9,9 +10,16 @@ type Props = {
   onPressProfile?: () => void;
 };
 
+const avatarSource = require('../../assets/profile-avatar.png');
+
+function HeaderAvatar() {
+  return <Image source={avatarSource} style={styles.avatarImg} resizeMode="cover" />;
+}
+
 export function AppHeader({ title, onPressMenu, onPressProfile }: Props) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { paddingTop: 16 + insets.top }]}>
       <Pressable
         accessibilityRole="button"
         onPress={onPressMenu}
@@ -22,13 +30,19 @@ export function AppHeader({ title, onPressMenu, onPressProfile }: Props) {
       <Text style={styles.title} numberOfLines={1}>
         {title}
       </Text>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onPressProfile}
-        style={({ pressed }) => [styles.avatarWrap, pressed && styles.pressed]}
-      >
-        <MaterialCommunityIcons name="account-outline" size={20} color={colors.onSurface} />
-      </Pressable>
+      {onPressProfile ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onPressProfile}
+          style={({ pressed }) => [styles.avatarWrap, pressed && styles.pressed]}
+        >
+          <HeaderAvatar />
+        </Pressable>
+      ) : (
+        <View style={styles.avatarWrap}>
+          <HeaderAvatar />
+        </View>
+      )}
     </View>
   );
 }
@@ -39,7 +53,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.background,
@@ -57,11 +71,12 @@ const styles = StyleSheet.create({
   avatarWrap: {
     width: 32,
     height: 32,
+    borderRadius: 16,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceContainerHigh,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
+  avatarImg: { width: '100%', height: '100%' },
   pressed: { opacity: 0.75 },
 });

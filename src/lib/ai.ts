@@ -1,4 +1,5 @@
 import type { Cycle, KeyResult } from '../types';
+import { ApiError } from './apiErrors';
 
 const DEFAULT_BASE = 'https://api.openai.com/v1';
 
@@ -30,7 +31,7 @@ export async function sendChatCompletion(params: ChatCompletionParams): Promise<
   });
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(errText || `HTTP ${res.status}`);
+    throw new ApiError(res.status, errText || `HTTP ${res.status}`);
   }
   const data = (await res.json()) as {
     choices?: { message?: { content?: string } }[];

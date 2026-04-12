@@ -1,7 +1,6 @@
 export type RootStackParamList = {
   Main: undefined;
   CycleSetup: undefined;
-  Settings: undefined;
 };
 
 export type MainTabParamList = {

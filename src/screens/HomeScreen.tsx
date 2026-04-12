@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import * as SecureStore from 'expo-secure-store';
 import { AppHeader } from '../components/AppHeader';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { KrProgressBar } from '../components/KrProgressBar';
@@ -12,7 +11,7 @@ import { getCurrentWeekNumber } from '../lib/dates';
 import { ObjectiveTitle } from '../lib/objective';
 import { buildLocalStatusInsight } from '../lib/insights';
 import { fetchStatusInsight } from '../lib/ai';
-import { SECURE_OPENAI_BASE, SECURE_OPENAI_KEY } from '../config/secrets';
+import { getOpenAiCredentials } from '../lib/openAiCredentials';
 
 export function HomeScreen() {
   const { cycle, keyResults, loading, refresh } = useAppData();
@@ -45,17 +44,17 @@ export function HomeScreen() {
           weekInfo?.current ?? 1,
           cycle.weekCount
         );
-        const apiKey = await SecureStore.getItemAsync(SECURE_OPENAI_KEY);
+        const { apiKey, baseUrl, model: modelName } = await getOpenAiCredentials();
         if (!apiKey) {
           if (!cancelled) setInsight(local);
           return;
         }
         setInsightLoading(true);
         try {
-          const base = await SecureStore.getItemAsync(SECURE_OPENAI_BASE);
           const text = await fetchStatusInsight({
             apiKey,
-            baseUrl: base ?? undefined,
+            baseUrl,
+            model: modelName,
             cycle,
             keyResults,
           });
@@ -73,7 +72,6 @@ export function HomeScreen() {
   );
 
   const openSetup = () => (navigation as { navigate: (n: string) => void }).navigate('CycleSetup');
-  const openSettings = () => (navigation as { navigate: (n: string) => void }).navigate('Settings');
 
   if (loading && !cycle) {
     return (
@@ -86,7 +84,7 @@ export function HomeScreen() {
   if (!cycle) {
     return (
       <View style={styles.root}>
-        <AppHeader title="STRATEGY" onPressMenu={openSetup} onPressProfile={openSettings} />
+        <AppHeader title="STRATEGY" onPressMenu={openSetup} />
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>Nenhum ciclo ativo</Text>
           <Text style={styles.emptyBody}>Configure seu objetivo e KRs para começar.</Text>
@@ -101,7 +99,7 @@ export function HomeScreen() {
   return (
     <View style={styles.root}>
       <ScreenGlow />
-      <AppHeader title="STRATEGY" onPressMenu={openSetup} onPressProfile={openSettings} />
+      <AppHeader title="STRATEGY" onPressMenu={openSetup} />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.eyebrowRow}>
           <View style={styles.eyebrowLine} />
@@ -136,7 +134,7 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
-  scroll: { paddingHorizontal: 24, paddingBottom: 32 },
+  scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   eyebrowLine: { width: 24, height: 2, backgroundColor: colors.accent },
   eyebrow: {

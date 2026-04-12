@@ -5,7 +5,6 @@ import { colors } from '../theme';
 import type { RootStackParamList } from './types';
 import { MainTabs } from './MainTabs';
 import { CycleSetupScreen } from '../screens/CycleSetupScreen';
-import { SettingsScreen } from '../screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -40,7 +39,6 @@ export function RootNavigator() {
             animation: 'slide_from_bottom',
           }}
         />
-        <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

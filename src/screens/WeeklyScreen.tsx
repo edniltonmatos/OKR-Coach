@@ -63,8 +63,11 @@ export function WeeklyScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!cycle) return;
-      setExpanded(currentWeek);
-      loadWeek(currentWeek);
+      setExpanded((prev) => {
+        const wn = prev ?? currentWeek;
+        loadWeek(wn);
+        return wn;
+      });
     }, [cycle, currentWeek, loadWeek])
   );
 
@@ -119,7 +122,6 @@ export function WeeklyScreen() {
         <AppHeader
           title="REGISTRO"
           onPressMenu={() => (navigation as { navigate: (n: string) => void }).navigate('CycleSetup')}
-          onPressProfile={() => (navigation as { navigate: (n: string) => void }).navigate('Settings')}
         />
         <View style={styles.emptyBox}>
           <Text style={styles.emptyText}>Crie um ciclo na configuração primeiro.</Text>
@@ -133,7 +135,6 @@ export function WeeklyScreen() {
       <AppHeader
         title="REGISTRO"
         onPressMenu={() => (navigation as { navigate: (n: string) => void }).navigate('CycleSetup')}
-        onPressProfile={() => (navigation as { navigate: (n: string) => void }).navigate('Settings')}
       />
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.eyebrowRow}>
@@ -155,7 +156,7 @@ export function WeeklyScreen() {
             );
           }
 
-          if (past && !active) {
+          if (past && !isOpen) {
             return (
               <Pressable
                 key={wn}
@@ -180,6 +181,7 @@ export function WeeklyScreen() {
                 <View>
                   <Text style={styles.weekBig}>S{String(wn).padStart(2, '0')}</Text>
                   {active && <Text style={styles.sub}>SEMANA ATUAL</Text>}
+                  {past && isOpen && <Text style={styles.subMuted}>EDITAR REGISTRO</Text>}
                 </View>
                 {active && (
                   <View style={[styles.badge, onTrack ? styles.badgeOk : styles.badgeWarn]}>
@@ -238,7 +240,7 @@ function formatNum(n: number): string {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
-  scroll: { paddingHorizontal: 24, paddingBottom: 32 },
+  scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 },
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
   eyebrowLine: { width: 24, height: 2, backgroundColor: colors.accent },
   eyebrow: {
@@ -300,6 +302,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 2,
     color: colors.accent,
+    marginTop: 4,
+  },
+  subMuted: {
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 10,
+    letterSpacing: 2,
+    color: colors.onSurfaceMuted,
     marginTop: 4,
   },
   badge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 4 },
