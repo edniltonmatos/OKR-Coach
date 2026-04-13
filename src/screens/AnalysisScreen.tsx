@@ -71,7 +71,15 @@ export function AnalysisScreen() {
     if (!apiKey) {
       Alert.alert(
         'Chave da API',
-        'Defina EXPO_PUBLIC_OPENAI_API_KEY no ficheiro .env (e opcionalmente EXPO_PUBLIC_OPENAI_BASE_URL e EXPO_PUBLIC_OPENAI_MODEL). Reinicie o Metro e gere de novo o build do app para a chave entrar no pacote.'
+        'Guarde a chave em Configuração (cofre no dispositivo) ou defina EXPO_PUBLIC_OPENAI_API_KEY no .env no build.',
+        [
+          { text: 'OK', style: 'cancel' },
+          {
+            text: 'Abrir configuração',
+            onPress: () =>
+              (navigation as { navigate: (n: string) => void }).navigate('CycleSetup'),
+          },
+        ]
       );
       return;
     }

@@ -63,5 +63,17 @@ export async function runMigrations(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_kr_cycle ON key_result(cycle_id);
     CREATE INDEX IF NOT EXISTS idx_week_cycle ON week_entry(cycle_id);
     CREATE INDEX IF NOT EXISTS idx_chat_cycle ON chat_message(cycle_id);
+
+    CREATE TABLE IF NOT EXISTS week_digest (
+      id TEXT PRIMARY KEY NOT NULL,
+      cycle_id TEXT NOT NULL,
+      week_number INTEGER NOT NULL,
+      summary TEXT NOT NULL,
+      mood TEXT NOT NULL DEFAULT 'mixed',
+      updated_at TEXT NOT NULL,
+      UNIQUE (cycle_id, week_number),
+      FOREIGN KEY (cycle_id) REFERENCES cycle(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_digest_cycle ON week_digest(cycle_id);
   `);
 }

@@ -4,11 +4,11 @@
     "slug": "okr-coach",
     "version": "1.1.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/app-brand.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/app-brand.png",
       "resizeMode": "contain",
       "backgroundColor": "#080808"
     },
@@ -20,7 +20,7 @@
       "package": "com.okrcoach.app",
       "versionCode": 2,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/app-brand.png",
         "backgroundColor": "#080808"
       },
       "edgeToEdgeEnabled": true,
@@ -28,7 +28,7 @@
       "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/app-brand.png"
     },
     "plugins": [
       "expo-sqlite",

@@ -5,6 +5,7 @@ import { colors } from '../theme';
 import type { RootStackParamList } from './types';
 import { MainTabs } from './MainTabs';
 import { CycleSetupScreen } from '../screens/CycleSetupScreen';
+import { CycleWizardScreen } from '../screens/CycleWizardScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -34,6 +35,14 @@ export function RootNavigator() {
         <Stack.Screen
           name="CycleSetup"
           component={CycleSetupScreen}
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="CycleWizard"
+          component={CycleWizardScreen}
           options={{
             presentation: 'modal',
             animation: 'slide_from_bottom',

@@ -18,6 +18,7 @@ export function HomeScreen() {
   const navigation = useNavigation();
   const [insight, setInsight] = useState<string | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
+  const [showApiHint, setShowApiHint] = useState(false);
 
   const weekInfo = useMemo(() => {
     if (!cycle) return null;
@@ -29,6 +30,19 @@ export function HomeScreen() {
     useCallback(() => {
       refresh();
     }, [refresh])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        const { apiKey } = await getOpenAiCredentials();
+        if (!cancelled) setShowApiHint(!apiKey);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [])
   );
 
   useFocusEffect(
@@ -114,6 +128,11 @@ export function HomeScreen() {
         ))}
         <View style={styles.statusCard}>
           <Text style={styles.statusEyebrow}>STATUS ATUAL</Text>
+          {showApiHint && (
+            <Text style={styles.apiHint}>
+              Sem chave da API: o texto abaixo é local. Configure em Configuração para usar a IA.
+            </Text>
+          )}
           {insightLoading ? (
             <ActivityIndicator color={colors.accent} style={{ marginVertical: 16 }} />
           ) : (
@@ -158,6 +177,13 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     color: colors.onSurfaceMuted,
     textTransform: 'uppercase',
+  },
+  apiHint: {
+    fontFamily: 'SpaceGrotesk_400Regular',
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.onSurfaceMuted,
+    marginBottom: 4,
   },
   statusBody: {
     fontFamily: 'SpaceGrotesk_400Regular',

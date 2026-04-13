@@ -38,3 +38,14 @@ export type ChatMessage = {
   content: string;
   createdAt: string;
 };
+
+export type WeekDigestMood = 'good' | 'mixed' | 'bad';
+
+export type WeekDigest = {
+  id: string;
+  cycleId: string;
+  weekNumber: number;
+  summary: string;
+  mood: WeekDigestMood;
+  updatedAt: string;
+};

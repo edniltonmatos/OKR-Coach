@@ -46,3 +46,65 @@ export async function getOpenAiCredentials(): Promise<OpenAiCredentials> {
 
   return { apiKey, baseUrl, model };
 }
+
+async function setOrRemove(key: string, value: string | null | undefined): Promise<void> {
+  const v = value?.trim();
+  if (v) {
+    await SecureStore.setItemAsync(key, v);
+  } else {
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch {
+      /* key may not exist */
+    }
+  }
+}
+
+/** Grava credenciais no SecureStore. Strings vazias removem o valor do cofre (volta ao .env se existir). */
+export async function setOpenAiCredentials(params: {
+  apiKey?: string | null;
+  baseUrl?: string | null;
+  model?: string | null;
+}): Promise<void> {
+  await Promise.all([
+    setOrRemove(SECURE_OPENAI_KEY, params.apiKey ?? undefined),
+    setOrRemove(SECURE_OPENAI_BASE, params.baseUrl ?? undefined),
+    setOrRemove(SECURE_OPENAI_MODEL, params.model ?? undefined),
+  ]);
+}
+
+/** Atualiza só base URL e modelo no cofre (campos vazios removem o override). */
+export async function setOpenAiEndpointInStore(params: {
+  baseUrl?: string | null;
+  model?: string | null;
+}): Promise<void> {
+  await Promise.all([
+    setOrRemove(SECURE_OPENAI_BASE, params.baseUrl ?? undefined),
+    setOrRemove(SECURE_OPENAI_MODEL, params.model ?? undefined),
+  ]);
+}
+
+/** Grava ou substitui a chave no cofre. */
+export async function setOpenAiApiKeyInStore(apiKey: string): Promise<void> {
+  const v = apiKey.trim();
+  if (!v) return;
+  await SecureStore.setItemAsync(SECURE_OPENAI_KEY, v);
+}
+
+export async function removeOpenAiApiKeyFromStore(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(SECURE_OPENAI_KEY);
+  } catch {
+    /* */
+  }
+}
+
+export async function clearOpenAiCredentials(): Promise<void> {
+  await setOpenAiCredentials({ apiKey: '', baseUrl: '', model: '' });
+}
+
+/** True se a chave foi guardada pelo utilizador no cofre (não só via .env). */
+export async function hasUserStoredApiKey(): Promise<boolean> {
+  const k = await SecureStore.getItemAsync(SECURE_OPENAI_KEY);
+  return !!k?.trim();
+}

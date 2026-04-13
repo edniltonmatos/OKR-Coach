@@ -1,8 +1,28 @@
-import type { ChatMessage, Cycle, KeyResult, WeekEntry } from '../types';
+import type { ChatMessage, Cycle, KeyResult, WeekDigest, WeekDigestMood, WeekEntry } from '../types';
 import { getDatabase } from './client';
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+function mapCycleRow(row: {
+  id: string;
+  objective_title: string;
+  start_date: string;
+  week_count: number;
+  review_weekday: number;
+  created_at: string;
+  updated_at: string;
+}): Cycle {
+  return {
+    id: row.id,
+    objectiveTitle: row.objective_title,
+    startDate: row.start_date,
+    weekCount: row.week_count,
+    reviewWeekday: row.review_weekday,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }
 
 export async function getLatestCycle(): Promise<Cycle | null> {
@@ -20,15 +40,80 @@ export async function getLatestCycle(): Promise<Cycle | null> {
      FROM cycle ORDER BY created_at DESC LIMIT 1`
   );
   if (!row) return null;
-  return {
-    id: row.id,
-    objectiveTitle: row.objective_title,
-    startDate: row.start_date,
-    weekCount: row.week_count,
-    reviewWeekday: row.review_weekday,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+  return mapCycleRow(row);
+}
+
+export async function getCycleById(id: string): Promise<Cycle | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{
+    id: string;
+    objective_title: string;
+    start_date: string;
+    week_count: number;
+    review_weekday: number;
+    created_at: string;
+    updated_at: string;
+  }>(
+    `SELECT id, objective_title, start_date, week_count, review_weekday, created_at, updated_at
+     FROM cycle WHERE id = ?`,
+    [id]
+  );
+  if (!row) return null;
+  return mapCycleRow(row);
+}
+
+export async function updateCycleFields(
+  cycleId: string,
+  fields: {
+    objectiveTitle?: string;
+    startDate?: string;
+    weekCount?: number;
+    reviewWeekday?: number;
+  }
+): Promise<void> {
+  const db = await getDatabase();
+  const cur = await getCycleById(cycleId);
+  if (!cur) throw new Error('Ciclo não encontrado');
+  const ts = nowIso();
+  await db.runAsync(
+    `UPDATE cycle SET objective_title = ?, start_date = ?, week_count = ?, review_weekday = ?, updated_at = ?
+     WHERE id = ?`,
+    [
+      fields.objectiveTitle ?? cur.objectiveTitle,
+      fields.startDate ?? cur.startDate,
+      fields.weekCount ?? cur.weekCount,
+      fields.reviewWeekday ?? cur.reviewWeekday,
+      ts,
+      cycleId,
+    ]
+  );
+}
+
+export async function replaceKeyResultsForCycle(
+  cycleId: string,
+  keyResults: Omit<KeyResult, 'id' | 'cycleId'>[]
+): Promise<void> {
+  const db = await getDatabase();
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(`DELETE FROM key_result WHERE cycle_id = ?`, [cycleId]);
+    for (const kr of keyResults) {
+      const krId = `${cycleId}-kr${kr.sortOrder}`;
+      await db.runAsync(
+        `INSERT INTO key_result (id, cycle_id, sort_order, label, initial_value, target_value, current_value)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          krId,
+          cycleId,
+          kr.sortOrder,
+          kr.label,
+          kr.initialValue,
+          kr.targetValue,
+          kr.currentValue,
+        ]
+      );
+    }
+    await db.runAsync(`UPDATE cycle SET updated_at = ? WHERE id = ?`, [nowIso(), cycleId]);
+  });
 }
 
 export async function getKeyResults(cycleId: string): Promise<KeyResult[]> {
@@ -109,6 +194,34 @@ export async function updateKeyResultCurrentValues(
     ]);
   }
   await db.runAsync(`UPDATE cycle SET updated_at = ? WHERE id = ?`, [nowIso(), cycleId]);
+}
+
+export async function getWeekEntriesForCycle(cycleId: string): Promise<WeekEntry[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{
+    id: string;
+    cycle_id: string;
+    week_number: number;
+    kr1_value: number | null;
+    kr2_value: number | null;
+    kr3_value: number | null;
+    notes: string | null;
+    completed: number;
+  }>(
+    `SELECT id, cycle_id, week_number, kr1_value, kr2_value, kr3_value, notes, completed
+     FROM week_entry WHERE cycle_id = ? ORDER BY week_number ASC`,
+    [cycleId]
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    cycleId: row.cycle_id,
+    weekNumber: row.week_number,
+    kr1Value: row.kr1_value,
+    kr2Value: row.kr2_value,
+    kr3Value: row.kr3_value,
+    notes: row.notes,
+    completed: row.completed === 1,
+  }));
 }
 
 export async function getWeekEntry(
@@ -223,4 +336,107 @@ export async function insertChatMessage(msg: Omit<ChatMessage, 'createdAt'> & { 
 export async function clearChatMessages(cycleId: string): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(`DELETE FROM chat_message WHERE cycle_id = ?`, [cycleId]);
+}
+
+export async function getChatMessagesInWeekRange(
+  cycleId: string,
+  startIsoInclusive: string,
+  endIsoExclusive: string
+): Promise<ChatMessage[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{
+    id: string;
+    cycle_id: string;
+    role: string;
+    content: string;
+    created_at: string;
+  }>(
+    `SELECT id, cycle_id, role, content, created_at FROM chat_message
+     WHERE cycle_id = ? AND created_at >= ? AND created_at < ?
+     ORDER BY created_at ASC`,
+    [cycleId, startIsoInclusive, endIsoExclusive]
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    cycleId: row.cycle_id,
+    role: row.role as ChatMessage['role'],
+    content: row.content,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function getWeekDigest(
+  cycleId: string,
+  weekNumber: number
+): Promise<WeekDigest | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{
+    id: string;
+    cycle_id: string;
+    week_number: number;
+    summary: string;
+    mood: string;
+    updated_at: string;
+  }>(
+    `SELECT id, cycle_id, week_number, summary, mood, updated_at FROM week_digest
+     WHERE cycle_id = ? AND week_number = ?`,
+    [cycleId, weekNumber]
+  );
+  if (!row) return null;
+  return {
+    id: row.id,
+    cycleId: row.cycle_id,
+    weekNumber: row.week_number,
+    summary: row.summary,
+    mood: row.mood as WeekDigestMood,
+    updatedAt: row.updated_at,
+  };
+}
+
+export async function getWeekDigestsForCycle(cycleId: string): Promise<WeekDigest[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{
+    id: string;
+    cycle_id: string;
+    week_number: number;
+    summary: string;
+    mood: string;
+    updated_at: string;
+  }>(
+    `SELECT id, cycle_id, week_number, summary, mood, updated_at FROM week_digest
+     WHERE cycle_id = ? ORDER BY week_number ASC`,
+    [cycleId]
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    cycleId: row.cycle_id,
+    weekNumber: row.week_number,
+    summary: row.summary,
+    mood: row.mood as WeekDigestMood,
+    updatedAt: row.updated_at,
+  }));
+}
+
+export async function upsertWeekDigest(entry: {
+  id: string;
+  cycleId: string;
+  weekNumber: number;
+  summary: string;
+  mood: WeekDigestMood;
+}): Promise<void> {
+  const db = await getDatabase();
+  const ts = nowIso();
+  const existing = await getWeekDigest(entry.cycleId, entry.weekNumber);
+  if (existing) {
+    await db.runAsync(
+      `UPDATE week_digest SET summary = ?, mood = ?, updated_at = ? WHERE id = ?`,
+      [entry.summary, entry.mood, ts, existing.id]
+    );
+  } else {
+    await db.runAsync(
+      `INSERT INTO week_digest (id, cycle_id, week_number, summary, mood, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [entry.id, entry.cycleId, entry.weekNumber, entry.summary, entry.mood, ts]
+    );
+  }
 }
